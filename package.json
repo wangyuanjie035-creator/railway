@@ -1,0 +1,29 @@
+{
+  "name": "shopify-3d-printing-service",
+  "version": "1.0.0",
+  "description": "3D Printing Customization Service for Shopify",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'No build step required'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "shopify",
+    "3d-printing",
+    "customization",
+    "api"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
