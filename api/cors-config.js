@@ -1,8 +1,8 @@
 /**
- * CORS配置 - 统一处理跨域请求
+ * CORS配置 - 统一处理跨域请求（CommonJS 中间件版本）
  */
 
-export function setCorsHeaders(req, res) {
+module.exports = function corsMiddleware(req, res, next) {
   // 允许的来源（Shopify 店铺 + 本地调试）
   const allowedOrigins = new Set([
     'https://sain-pdc-test.myshopify.com',
@@ -31,4 +31,14 @@ export function setCorsHeaders(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
+
+  // 预检请求直接返回
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+
+  if (typeof next === 'function') {
+    next();
+  }
 }
