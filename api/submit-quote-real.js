@@ -142,7 +142,13 @@ module.exports = async function handler(req, res) {
       if (req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
         console.log('📁 开始上传单个文件到Shopify Files...');
         try {
-          const storeFileResponse = await fetch(`${req.headers.origin || 'https://shopify-13s4.vercel.app'}/api/store-file-real`, {
+          // 优先使用环境变量指定的公开基础地址（如 Railway 域名），否则回退到当前请求的 Host
+          const baseUrlEnv = process.env.PUBLIC_BASE_URL;
+          const requestOrigin = req.headers.origin;
+          const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
+          const baseUrl = (baseUrlEnv || requestOrigin || requestHost || '').replace(/\/$/, '');
+
+          const storeFileResponse = await fetch(`${baseUrl}/api/store-file-real`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
