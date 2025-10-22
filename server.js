@@ -21,6 +21,17 @@ app.use('/blocks', express.static(path.join(__dirname, 'blocks')));
 app.use('/layout', express.static(path.join(__dirname, 'layout')));
 app.use('/config', express.static(path.join(__dirname, 'config')));
 
+// 健康检查端点
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    service: 'Shopify 3D Printing Service',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // API 路由
 app.use('/api', require('./api/index.js'));
 
