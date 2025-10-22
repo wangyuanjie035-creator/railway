@@ -4,31 +4,42 @@ const path = require('path');
 
 const router = express.Router();
 
-// 导入所有 API 路由
-const downloadFile = require('./download-file-express.js');
-const submitQuoteReal = require('./submit-quote-real.js');
-const getDraftOrders = require('./get-draft-orders.js');
-const updateQuote = require('./update-quote.js');
-const deleteDraftOrder = require('./delete-draft-order.js');
-const sendInvoiceEmail = require('./send-invoice-email.js');
-const storeFileReal = require('./store-file-real.js');
-const completeDraftOrder = require('./complete-draft-order.js');
-const getDraftOrderSimple = require('./get-draft-order-simple.js');
-const corsConfig = require('./cors-config.js');
+// 安全导入 API 路由
+let downloadFile, submitQuoteReal, getDraftOrders, updateQuote, deleteDraftOrder;
+let sendInvoiceEmail, storeFileReal, completeDraftOrder, getDraftOrderSimple, corsConfig;
+
+try {
+  downloadFile = require('./download-file-express.js');
+  submitQuoteReal = require('./submit-quote-real.js');
+  getDraftOrders = require('./get-draft-orders.js');
+  updateQuote = require('./update-quote.js');
+  deleteDraftOrder = require('./delete-draft-order.js');
+  sendInvoiceEmail = require('./send-invoice-email.js');
+  storeFileReal = require('./store-file-real.js');
+  completeDraftOrder = require('./complete-draft-order.js');
+  getDraftOrderSimple = require('./get-draft-order-simple.js');
+  corsConfig = require('./cors-config.js');
+} catch (error) {
+  console.error('Error importing API routes:', error.message);
+}
 
 // 应用 CORS 配置
-router.use(corsConfig);
+if (corsConfig) {
+  router.use(corsConfig);
+} else {
+  router.use(cors());
+}
 
-// 注册所有路由
-router.get('/download-file', downloadFile);
-router.post('/submit-quote-real', submitQuoteReal);
-router.get('/get-draft-orders', getDraftOrders);
-router.post('/update-quote', updateQuote);
-router.delete('/delete-draft-order', deleteDraftOrder);
-router.post('/send-invoice-email', sendInvoiceEmail);
-router.post('/store-file-real', storeFileReal);
-router.post('/complete-draft-order', completeDraftOrder);
-router.get('/get-draft-order-simple', getDraftOrderSimple);
+// 注册所有路由（只注册成功导入的）
+if (downloadFile) router.get('/download-file', downloadFile);
+if (submitQuoteReal) router.post('/submit-quote-real', submitQuoteReal);
+if (getDraftOrders) router.get('/get-draft-orders', getDraftOrders);
+if (updateQuote) router.post('/update-quote', updateQuote);
+if (deleteDraftOrder) router.delete('/delete-draft-order', deleteDraftOrder);
+if (sendInvoiceEmail) router.post('/send-invoice-email', sendInvoiceEmail);
+if (storeFileReal) router.post('/store-file-real', storeFileReal);
+if (completeDraftOrder) router.post('/complete-draft-order', completeDraftOrder);
+if (getDraftOrderSimple) router.get('/get-draft-order-simple', getDraftOrderSimple);
 
 // 健康检查端点
 router.get('/health', (req, res) => {
