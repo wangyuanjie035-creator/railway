@@ -36,7 +36,7 @@ export async function storeFileData({ draftOrderId, fileData, fileName }) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // 设置CORS头
   res.setHeader('Access-Control-Allow-Origin', 'https://sain-pdc-test.myshopify.com');
   res.setHeader('Access-Control-Allow-Credentials', 'true');

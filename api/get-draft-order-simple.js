@@ -34,7 +34,7 @@ async function shopGql(query, variables) {
   return json;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', 'https://sain-pdc-test.myshopify.com');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');

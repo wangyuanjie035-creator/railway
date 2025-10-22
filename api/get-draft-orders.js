@@ -1,4 +1,4 @@
-import { setCorsHeaders } from './cors-config.js';
+const setCorsHeaders = require('./cors-config.js');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ import { setCorsHeaders } from './cors-config.js';
  * }
  */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // 设置CORS头
   setCorsHeaders(req, res);
 

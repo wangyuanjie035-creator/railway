@@ -3,7 +3,7 @@
  * 用于验证CORS头是否正确设置
  */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // 设置CORS头
   res.setHeader('Access-Control-Allow-Origin', 'https://sain-pdc-test.myshopify.com');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');

@@ -1,4 +1,4 @@
-import { setCorsHeaders } from './cors-config.js';
+const setCorsHeaders = require('./cors-config.js');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -60,7 +60,7 @@ async function shopGql(query, variables) {
   return json;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
