@@ -1,28 +1,15 @@
 const setCorsHeaders = require('./cors-config.js');
-const FormData = require('form-data');
 
-// Node.js 环境中的 Blob polyfill
-if (typeof Blob === 'undefined') {
-  global.Blob = class Blob {
-    constructor(chunks, options = {}) {
-      this.type = options.type || '';
-      this.buffer = Buffer.concat(chunks.map(chunk => 
-        Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-      ));
-    }
-    
-    get size() {
-      return this.buffer.length;
-    }
-    
-    arrayBuffer() {
-      return Promise.resolve(this.buffer.buffer.slice(
-        this.buffer.byteOffset,
-        this.buffer.byteOffset + this.buffer.byteLength
-      ));
-    }
-  };
+// 尝试使用原生 FormData，如果不存在则使用 form-data 包
+let FormDataClass;
+try {
+  // Node.js 18+ 有原生 FormData
+  FormDataClass = global.FormData || require('form-data');
+} catch (e) {
+  FormDataClass = require('form-data');
 }
+
+console.log('🔧 使用的 FormData 类型:', FormDataClass.name || 'form-data package');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -136,11 +123,13 @@ module.exports = async function handler(req, res) {
       console.log('✅ Staged Upload创建成功');
       console.log('🔍 完整的 stagedTarget:', JSON.stringify(stagedTarget, null, 2));
 
-      // 步骤2: 上传文件到临时地址（Node.js 环境使用 form-data 包）
-      const formData = new FormData();
+      // 步骤2: 上传文件到临时地址
+      const formData = new FormDataClass();
       
       console.log('🧾 Staged params (name only):', stagedTarget.parameters.map(p => p.name));
       console.log('🧾 Staged params (full):', stagedTarget.parameters.map(p => `${p.name}: ${p.value}`));
+      console.log('🔍 stagedTarget.url:', stagedTarget.url);
+      console.log('🔍 stagedTarget.resourceUrl:', stagedTarget.resourceUrl);
       
       // 添加参数
       stagedTarget.parameters.forEach(param => {
@@ -148,12 +137,20 @@ module.exports = async function handler(req, res) {
         console.log(`✅ 添加参数: ${param.name} = ${param.value}`);
       });
       
-      // 添加文件（使用 Buffer，Node.js 环境）
-      formData.append('file', fileBuffer, {
-        filename: fileName,
-        contentType: fileType || 'application/octet-stream'
-      });
-      console.log(`📎 添加文件: ${fileName}, 大小: ${fileSize} 字节`);
+      // 添加文件（根据 FormData 类型使用不同方法）
+      if (FormDataClass.name === 'FormData') {
+        // 原生 FormData (Node.js 18+)
+        const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
+        formData.append('file', blob, fileName);
+        console.log(`📎 添加文件 (原生): ${fileName}, 大小: ${fileSize} 字节`);
+      } else {
+        // form-data 包
+        formData.append('file', fileBuffer, {
+          filename: fileName,
+          contentType: fileType || 'application/octet-stream'
+        });
+        console.log(`📎 添加文件 (form-data): ${fileName}, 大小: ${fileSize} 字节`);
+      }
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
@@ -168,6 +165,8 @@ module.exports = async function handler(req, res) {
         const errorText = await uploadResponse.text();
         console.error('❌ 文件上传失败:', uploadResponse.status, uploadResponse.statusText);
         console.error('错误详情:', errorText);
+        console.error('🔍 上传URL:', stagedTarget.url);
+        console.error('🔍 请求头:', Object.fromEntries(formData.getHeaders ? Object.entries(formData.getHeaders()) : []));
         return res.status(500).json({
           success: false,
           message: '文件上传到临时地址失败',
