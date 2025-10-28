@@ -114,16 +114,19 @@ module.exports = async function handler(req, res) {
       // 步骤2: 上传文件到临时地址
       const formData = new FormData();
       
-      // 添加参数
+      // 添加参数（必须在文件之前）
       stagedTarget.parameters.forEach(param => {
         formData.append(param.name, param.value);
       });
       
-      // 添加文件（使用Buffer作为文件数据）
+      // 添加文件（文件必须最后添加）
       formData.append('file', fileBuffer, {
         filename: fileName,
         contentType: fileType || 'application/octet-stream'
       });
+
+      console.log('📤 上传文件到:', stagedTarget.url);
+      console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
 
       const uploadResponse = await fetch(stagedTarget.url, {
         method: 'POST',
@@ -132,11 +135,14 @@ module.exports = async function handler(req, res) {
       });
 
       if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
         console.error('❌ 文件上传失败:', uploadResponse.status, uploadResponse.statusText);
+        console.error('错误详情:', errorText);
         return res.status(500).json({
           success: false,
           message: '文件上传到临时地址失败',
-          error: `${uploadResponse.status} - ${uploadResponse.statusText}`
+          error: `${uploadResponse.status} - ${uploadResponse.statusText}`,
+          details: errorText
         });
       }
 
