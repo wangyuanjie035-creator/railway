@@ -115,6 +115,7 @@ module.exports = async function handler(req, res) {
       // 步骤2: 上传文件到临时地址（使用 form-data 并严格遵循字段顺序，文件放最后，避免自定义 headers）
       const formData = new FormData();
       // 1) 先追加服务返回的所有参数
+      console.log('🧾 Staged params (name only):', stagedTarget.parameters.map(p => p.name));
       stagedTarget.parameters.forEach(param => {
         formData.append(param.name, param.value);
       });
