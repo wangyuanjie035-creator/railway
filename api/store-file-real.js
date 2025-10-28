@@ -114,13 +114,38 @@ module.exports = async function handler(req, res) {
 
       // 步骤2: 上传文件到临时地址（使用 form-data 并严格遵循字段顺序，文件放最后，避免自定义 headers）
       const formData = new FormData();
-      // 1) 先追加服务返回的所有参数
+      
+      // 1) 先追加服务返回的所有参数，按照 Google Cloud Storage 要求的顺序
       console.log('🧾 Staged params (name only):', stagedTarget.parameters.map(p => p.name));
-      stagedTarget.parameters.forEach(param => {
-        formData.append(param.name, param.value);
+      console.log('🧾 Staged params (full):', stagedTarget.parameters.map(p => `${p.name}: ${p.value}`));
+      
+      // Google Cloud Storage 要求的参数顺序
+      const paramOrder = [
+        'key', 'acl', 'Content-Type', 'content-type', 'policy', 'x-goog-algorithm', 
+        'x-goog-credential', 'x-goog-date', 'x-goog-expires', 'x-goog-signedheaders', 'x-goog-signature'
+      ];
+      
+      // 按照指定顺序添加参数
+      paramOrder.forEach(paramName => {
+        const param = stagedTarget.parameters.find(p => p.name.toLowerCase() === paramName.toLowerCase());
+        if (param) {
+          formData.append(param.name, param.value);
+          console.log(`✅ 添加参数: ${param.name} = ${param.value}`);
+        }
       });
+      
+      // 添加任何剩余的参数（防止遗漏）
+      stagedTarget.parameters.forEach(param => {
+        const alreadyAdded = paramOrder.some(p => p.toLowerCase() === param.name.toLowerCase());
+        if (!alreadyAdded) {
+          formData.append(param.name, param.value);
+          console.log(`🔄 添加剩余参数: ${param.name} = ${param.value}`);
+        }
+      });
+      
       // 2) 最后追加文件（只设置 filename，避免 contentType 造成签名不匹配）
       formData.append('file', fileBuffer, { filename: fileName });
+      console.log(`📎 添加文件: ${fileName}, 大小: ${fileSize} 字节`);
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
