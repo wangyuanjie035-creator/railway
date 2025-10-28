@@ -1,5 +1,5 @@
 const setCorsHeaders = require('./cors-config.js');
-const FormData = require('form-data');
+// Node.js 18+ 内置 FormData，不再需要 form-data 包
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -112,6 +112,7 @@ module.exports = async function handler(req, res) {
       console.log('✅ Staged Upload创建成功');
 
       // 步骤2: 上传文件到临时地址
+      // 使用原生 FormData（Node.js 18+）
       const formData = new FormData();
       
       // 添加参数（必须在文件之前）
@@ -119,19 +120,16 @@ module.exports = async function handler(req, res) {
         formData.append(param.name, param.value);
       });
       
-      // 添加文件（文件必须最后添加）
-      formData.append('file', fileBuffer, {
-        filename: fileName,
-        contentType: fileType || 'application/octet-stream'
-      });
+      // 添加文件（使用 Blob）
+      const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
+      formData.append('file', blob, fileName);
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
 
       const uploadResponse = await fetch(stagedTarget.url, {
         method: 'POST',
-        body: formData,
-        headers: formData.getHeaders()
+        body: formData
       });
 
       if (!uploadResponse.ok) {
