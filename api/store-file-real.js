@@ -120,12 +120,16 @@ module.exports = async function handler(req, res) {
         formData.append(param.name, param.value);
       });
       
-      // 添加文件（使用 Blob）
-      const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
-      formData.append('file', blob, fileName);
+      // 添加文件（使用 File API）
+      const file = new File([fileBuffer], fileName, { 
+        type: fileType || 'application/octet-stream' 
+      });
+      formData.append('file', file);
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
+      console.log('📊 文件名:', fileName);
+      console.log('📊 文件大小:', fileBuffer.length);
 
       const uploadResponse = await fetch(stagedTarget.url, {
         method: 'POST',
