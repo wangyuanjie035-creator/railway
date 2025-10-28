@@ -1004,20 +1004,31 @@
       const fileData = order.fileData;
       
       // 获取文件存储方式信息
-      const storageMethod = order.lineItems?.[0]?.customAttributes?.find(attr => attr.key === '文件存储方式')?.value;
       const shopifyFileId = order.lineItems?.[0]?.customAttributes?.find(attr => attr.key === 'Shopify文件ID')?.value;
       
       console.log('订单文件信息:', { 
         fileName, 
-        invoiceUrl, 
-        fileId, 
-        fileData: fileData ? '有数据' : '无数据',
-        storageMethod,
-        shopifyFileId
+        shopifyFileId,
+        fileData: fileData ? '有数据' : '无数据'
       });
 
-      // 按照文档标准流程：使用标准的downloadFile函数
-      await downloadFile(fileData || fileId, fileName);
+      // 优先使用shopifyFileId通过API下载
+      if (shopifyFileId) {
+        console.log('通过Shopify文件ID下载:', shopifyFileId);
+        const downloadUrl = `${API_BASE}/download-file?shopifyFileId=${encodeURIComponent(shopifyFileId)}&fileName=${encodeURIComponent(fileName)}`;
+        window.open(downloadUrl, '_blank');
+        return;
+      }
+
+      // 如果有Base64数据，直接下载
+      if (fileData && fileData.startsWith('data:')) {
+        console.log('使用Base64数据下载');
+        await downloadFile(fileData, fileName);
+        return;
+      }
+
+      // 如果没有上传到Shopify或没有Base64数据
+      alert('文件未上传到Shopify，无法下载');
     } catch (error) {
       console.error('下载文件失败:', error);
       alert('下载文件失败: ' + error.message);
