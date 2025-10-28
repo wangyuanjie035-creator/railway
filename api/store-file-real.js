@@ -1,4 +1,5 @@
 const setCorsHeaders = require('./cors-config.js');
+const FormData = require('form-data');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -118,13 +119,16 @@ module.exports = async function handler(req, res) {
         formData.append(param.name, param.value);
       });
       
-      // 添加文件
-      const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
-      formData.append('file', blob, fileName);
+      // 添加文件（使用Buffer作为文件数据）
+      formData.append('file', fileBuffer, {
+        filename: fileName,
+        contentType: fileType || 'application/octet-stream'
+      });
 
       const uploadResponse = await fetch(stagedTarget.url, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: formData.getHeaders()
       });
 
       if (!uploadResponse.ok) {
