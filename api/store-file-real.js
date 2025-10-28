@@ -80,7 +80,7 @@ module.exports = async function handler(req, res) {
         }
       `;
 
-      const stagedUploadResponse = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+      const stagedUploadResponse = await fetch(`https://${storeDomain}/admin/api/2024-10/graphql.json`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,6 +111,7 @@ module.exports = async function handler(req, res) {
 
       const stagedTarget = stagedUploadData.data.stagedUploadsCreate.stagedTargets[0];
       console.log('✅ Staged Upload创建成功');
+      console.log('🔍 完整的 stagedTarget:', JSON.stringify(stagedTarget, null, 2));
 
       // 步骤2: 上传文件到临时地址（使用 form-data 并严格遵循字段顺序，文件放最后，避免自定义 headers）
       const formData = new FormData();
@@ -188,7 +189,7 @@ module.exports = async function handler(req, res) {
         }
       `;
 
-      const fileCreateResponse = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+      const fileCreateResponse = await fetch(`https://${storeDomain}/admin/api/2024-10/graphql.json`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
