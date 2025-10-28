@@ -58,6 +58,21 @@ module.exports = async function handler(req, res) {
       const fileSize = fileBuffer.length;
 
       console.log(`📁 开始上传文件: ${fileName}, 大小: ${fileSize} 字节`);
+      
+      // 临时跳过 Shopify Files，直接使用 Base64 存储（调试用）
+      if (process.env.SKIP_SHOPIFY_FILES === 'true') {
+        console.log('🔄 跳过 Shopify Files，直接使用 Base64 存储');
+        const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        return res.status(200).json({
+          success: true,
+          message: '文件上传成功（Base64存储）',
+          fileId: fileId,
+          fileName: fileName,
+          fileData: fileData, // 返回原始 Base64 数据
+          uploadedFileSize: fileSize,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // 获取环境变量
       const storeDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOP;
@@ -122,6 +137,12 @@ module.exports = async function handler(req, res) {
       const stagedTarget = stagedUploadData.data.stagedUploadsCreate.stagedTargets[0];
       console.log('✅ Staged Upload创建成功');
       console.log('🔍 完整的 stagedTarget:', JSON.stringify(stagedTarget, null, 2));
+      
+      // 检查参数是否完整
+      if (!stagedTarget.parameters || stagedTarget.parameters.length < 5) {
+        console.error('⚠️ 参数数量异常，预期至少5个参数，实际:', stagedTarget.parameters?.length || 0);
+        console.error('🔍 完整响应:', JSON.stringify(stagedUploadData, null, 2));
+      }
 
       // 步骤2: 上传文件到临时地址
       const formData = new FormDataClass();
