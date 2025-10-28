@@ -50,21 +50,26 @@ async function handleShopifyFileDownload(req, res, shopifyFileId, requestedFileN
   try {
     console.log('开始从Shopify Files下载:', shopifyFileId);
 
-    // 查询文件信息
+    // 查询文件信息 - 使用 files 查询
     const fileQuery = `
       query($id: ID!) {
-        file(id: $id) {
-          id
-          url
-          originalFileSize
-          alt
+        files(first: 1, query: $id) {
+          edges {
+            node {
+              id
+              ... on File {
+                url
+                alt
+              }
+            }
+          }
         }
       }
     `;
 
-    const fileResult = await shopGql(fileQuery, { id: shopifyFileId });
+    const fileResult = await shopGql(fileQuery, { id: `"${shopifyFileId}"` });
 
-    if (fileResult.errors || !fileResult.data?.file) {
+    if (fileResult.errors || !fileResult.data?.files?.edges?.[0]?.node) {
       console.error('查询Shopify文件失败:', fileResult.errors);
       return res.status(404).json({ 
         success: false, 
@@ -72,11 +77,19 @@ async function handleShopifyFileDownload(req, res, shopifyFileId, requestedFileN
       });
     }
 
-    const file = fileResult.data.file;
+    const file = fileResult.data.files.edges[0].node;
     console.log('Shopify文件信息:', file);
 
-    // 重定向到 Shopify 文件 URL
-    res.redirect(file.url);
+    // 如果文件有URL，重定向到 Shopify 文件 URL
+    if (file.url) {
+      return res.redirect(file.url);
+    }
+
+    // 如果文件没有URL，返回错误
+    return res.status(404).json({
+      success: false,
+      message: '文件没有可用的URL'
+    });
     
   } catch (error) {
     console.error('Shopify文件下载失败:', error);
