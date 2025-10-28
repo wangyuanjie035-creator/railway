@@ -4,10 +4,15 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080; // Railway 默认端口
 
 // 确保服务器监听所有接口
 const HOST = '0.0.0.0';
+
+console.log('🔧 Initializing Express server...');
+console.log('🔧 PORT:', PORT);
+console.log('🔧 HOST:', HOST);
+console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
 
 // 中间件
 app.use(cors());
