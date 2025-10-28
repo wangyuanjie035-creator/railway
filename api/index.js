@@ -6,7 +6,7 @@ const router = express.Router();
 
 // 安全导入 API 路由
 let downloadFile, submitQuoteReal, getDraftOrders, updateQuote, deleteDraftOrder;
-let sendInvoiceEmail, storeFileReal, completeDraftOrder, getDraftOrderSimple, corsConfig;
+let sendInvoiceEmail, storeFileReal, completeDraftOrder, getDraftOrderSimple, corsConfig, diagnoseEnv;
 
 try {
   downloadFile = require('./download-file-express.js');
@@ -19,6 +19,7 @@ try {
   completeDraftOrder = require('./complete-draft-order.js');
   getDraftOrderSimple = require('./get-draft-order-simple.js');
   corsConfig = require('./cors-config.js');
+  diagnoseEnv = require('./diagnose-env.js');
 } catch (error) {
   console.error('Error importing API routes:', error.message);
 }
@@ -40,6 +41,7 @@ if (sendInvoiceEmail) router.post('/send-invoice-email', sendInvoiceEmail);
 if (storeFileReal) router.post('/store-file-real', storeFileReal);
 if (completeDraftOrder) router.post('/complete-draft-order', completeDraftOrder);
 if (getDraftOrderSimple) router.get('/get-draft-order-simple', getDraftOrderSimple);
+if (diagnoseEnv) router.get('/diagnose-env', diagnoseEnv);
 
 // 健康检查端点
 router.get('/health', (req, res) => {
