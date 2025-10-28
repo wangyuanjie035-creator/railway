@@ -1,5 +1,5 @@
 const setCorsHeaders = require('./cors-config.js');
-// Node.js 18+ 内置 FormData，不再需要 form-data 包
+const FormData = require('form-data');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -111,29 +111,22 @@ module.exports = async function handler(req, res) {
       const stagedTarget = stagedUploadData.data.stagedUploadsCreate.stagedTargets[0];
       console.log('✅ Staged Upload创建成功');
 
-      // 步骤2: 上传文件到临时地址
-      // 使用原生 FormData（Node.js 18+）
+      // 步骤2: 上传文件到临时地址（使用 form-data 并严格遵循字段顺序，文件放最后，避免自定义 headers）
       const formData = new FormData();
-      
-      // 添加参数（必须在文件之前）
+      // 1) 先追加服务返回的所有参数
       stagedTarget.parameters.forEach(param => {
         formData.append(param.name, param.value);
       });
-      
-      // 添加文件（使用 File API）
-      const file = new File([fileBuffer], fileName, { 
-        type: fileType || 'application/octet-stream' 
-      });
-      formData.append('file', file);
+      // 2) 最后追加文件（只设置 filename，避免 contentType 造成签名不匹配）
+      formData.append('file', fileBuffer, { filename: fileName });
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
-      console.log('📊 文件名:', fileName);
-      console.log('📊 文件大小:', fileBuffer.length);
 
       const uploadResponse = await fetch(stagedTarget.url, {
         method: 'POST',
-        body: formData
+        body: formData,
+        // 不要设置任何额外 headers；签名依赖于字段，form-data 会自动设置边界
       });
 
       if (!uploadResponse.ok) {
