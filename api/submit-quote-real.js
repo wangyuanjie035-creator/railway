@@ -37,7 +37,7 @@ const setCorsHeaders = require('./cors-config.js');
 
 module.exports = async function handler(req, res) {
   // 设置CORS头
-  setCorsHeaders(req, res);
+  setCorsHeaders(req, res, () => {});
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();

@@ -23,7 +23,8 @@ const FormData = require('form-data');
  */
 
 module.exports = async function handler(req, res) {
-  setCorsHeaders(req, res);
+  // 使用 CORS 中间件
+  setCorsHeaders(req, res, () => {});
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
