@@ -1005,24 +1005,52 @@
       
       // 获取文件存储方式信息
       const shopifyFileId = order.lineItems?.[0]?.customAttributes?.find(attr => attr.key === 'Shopify文件ID')?.value;
+      const fileStorage = order.lineItems?.[0]?.customAttributes?.find(attr => attr.key === '文件存储方式')?.value;
       
       console.log('订单文件信息:', { 
         fileName, 
         shopifyFileId,
-        fileData: fileData ? '有数据' : '无数据'
+        fileStorage,
+        fileData: fileData ? '有数据' : '无数据',
+        noteLength: order.note ? order.note.length : 0
       });
 
       // 优先使用shopifyFileId通过API下载
-      if (shopifyFileId) {
+      if (shopifyFileId && shopifyFileId !== '未上传' && fileStorage === 'Shopify Files') {
         console.log('通过Shopify文件ID下载:', shopifyFileId);
         const downloadUrl = `${API_BASE}/download-file?shopifyFileId=${encodeURIComponent(shopifyFileId)}&fileName=${encodeURIComponent(fileName)}`;
         window.open(downloadUrl, '_blank');
         return;
       }
 
-      // 如果有Base64数据，直接下载
+      // 从Draft Order的note字段提取Base64数据
+      if (fileStorage === 'Base64' && order.note) {
+        console.log('从note字段提取Base64数据，note长度:', order.note.length);
+        const noteContent = order.note;
+        
+        // 查找文件数据标记
+        const fileDataMarker = '=== 文件数据 ===';
+        const fileDataIndex = noteContent.indexOf(fileDataMarker);
+        
+        if (fileDataIndex !== -1) {
+          // 提取Base64数据（从标记后开始）
+          const base64Data = noteContent.substring(fileDataIndex + fileDataMarker.length).trim();
+          
+          if (base64Data && base64Data.startsWith('data:')) {
+            console.log('✅ 成功提取Base64数据，大小:', Math.round(base64Data.length / 1024), 'KB');
+            await downloadFile(base64Data, fileName);
+            return;
+          } else {
+            console.warn('⚠️ note字段中未找到有效的Base64数据');
+          }
+        } else {
+          console.warn('⚠️ note字段中未找到文件数据标记');
+        }
+      }
+
+      // 如果有旧的Base64数据，直接下载
       if (fileData && fileData.startsWith('data:')) {
-        console.log('使用Base64数据下载');
+        console.log('使用旧版Base64数据下载');
         await downloadFile(fileData, fileName);
         return;
       }

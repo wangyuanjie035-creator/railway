@@ -186,7 +186,7 @@ module.exports = async function handler(req, res) {
         fileDataStored = true;
       }
 
-      // 构建customAttributes
+      // 构建customAttributes（不包含Base64数据，避免长度限制）
       const baseAttributes = [
         // 基本参数
         { key: '材料', value: material },
@@ -197,8 +197,8 @@ module.exports = async function handler(req, res) {
         { key: '询价单号', value: quoteId },
         { key: 'Shopify文件ID', value: shopifyFileInfo ? shopifyFileInfo.shopifyFileId : '未上传' },
         { key: '文件存储方式', value: shopifyFileInfo ? 'Shopify Files' : 'Base64' },
-        { key: '原始文件大小', value: shopifyFileInfo ? shopifyFileInfo.originalFileSize : '未知' },
-        { key: '文件数据', value: shopifyFileInfo ? '已上传到Shopify Files' : (req.body.fileUrl && req.body.fileUrl.startsWith('data:') ? '已存储Base64数据' : '未提供') }
+        { key: '原始文件大小', value: shopifyFileInfo ? shopifyFileInfo.originalFileSize : (req.body.fileUrl ? Math.round(Buffer.from(req.body.fileUrl.split(',')[1] || '', 'base64').length / 1024) + 'KB' : '未知') },
+        { key: '文件数据位置', value: shopifyFileInfo ? 'Shopify Files' : 'Draft Order Note字段' }
       ];
 
       
@@ -236,7 +236,7 @@ module.exports = async function handler(req, res) {
             customAttributes: allAttributes
           }
         ],
-        note: `询价单号: ${quoteId}\n客户: ${customerName || '未提供'}\n文件: ${fileName || '未提供'}\n文件大小: ${req.body.fileUrl ? Math.round(req.body.fileUrl.length / 1024) + 'KB' : '未提供'}`
+        note: `询价单号: ${quoteId}\n客户: ${customerName || '未提供'}\n文件: ${fileName || '未提供'}\n文件大小: ${req.body.fileUrl ? Math.round(Buffer.from(req.body.fileUrl.split(',')[1] || '', 'base64').length / 1024) + 'KB' : '未提供'}\n\n=== 文件数据 ===\n${req.body.fileUrl && req.body.fileUrl.startsWith('data:') && !shopifyFileInfo ? req.body.fileUrl : '文件已上传到Shopify Files或未提供'}`
       };
 
       // 获取环境变量 - 支持多种变量名
