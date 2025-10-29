@@ -198,7 +198,7 @@ module.exports = async function handler(req, res) {
         { key: 'Shopify文件ID', value: shopifyFileInfo ? shopifyFileInfo.shopifyFileId : '未上传' },
         { key: '文件存储方式', value: shopifyFileInfo ? 'Shopify Files' : 'Base64' },
         { key: '原始文件大小', value: shopifyFileInfo ? shopifyFileInfo.originalFileSize : (req.body.fileUrl ? Math.round(Buffer.from(req.body.fileUrl.split(',')[1] || '', 'base64').length / 1024) + 'KB' : '未知') },
-        { key: '文件数据位置', value: shopifyFileInfo ? 'Shopify Files' : 'Draft Order Note字段' }
+        { key: '文件数据位置', value: shopifyFileInfo ? 'Shopify Files' : 'Server Local Storage' }
       ];
 
       
@@ -236,7 +236,7 @@ module.exports = async function handler(req, res) {
             customAttributes: allAttributes
           }
         ],
-        note: `询价单号: ${quoteId}\n客户: ${customerName || '未提供'}\n文件: ${fileName || '未提供'}\n文件大小: ${req.body.fileUrl ? Math.round(Buffer.from(req.body.fileUrl.split(',')[1] || '', 'base64').length / 1024) + 'KB' : '未提供'}\n\n=== 文件数据 ===\n${req.body.fileUrl && req.body.fileUrl.startsWith('data:') && !shopifyFileInfo ? req.body.fileUrl : '文件已上传到Shopify Files或未提供'}`
+        note: `询价单号: ${quoteId}\n客户: ${customerName || '未提供'}\n文件: ${fileName || '未提供'}\n文件大小: ${req.body.fileUrl ? Math.round(Buffer.from(req.body.fileUrl.split(',')[1] || '', 'base64').length / 1024) + 'KB' : '未提供'}`
       };
 
       // 获取环境变量 - 支持多种变量名
@@ -283,6 +283,26 @@ module.exports = async function handler(req, res) {
       }
 
       const draftOrder = data.data.draftOrderCreate.draftOrder;
+
+      // 如果没有上传到 Shopify Files，则将 Base64 数据存到服务端本地存储，与 fileId 关联
+      try {
+        if ((!shopifyFileInfo || process.env.SKIP_SHOPIFY_FILES === 'true') && req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
+          const baseUrlEnv = process.env.PUBLIC_BASE_URL || '';
+          const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
+          const baseUrl = (baseUrlEnv || requestHost).replace(/\/$/, '');
+          await fetch(`${baseUrl}/api/store-file-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              draftOrderId: draftOrder.id,
+              fileData: req.body.fileUrl.split(',')[1],
+              fileName: fileName || 'model.stl'
+            })
+          });
+        }
+      } catch (persistErr) {
+        console.warn('⚠️ 持久化Base64文件失败:', persistErr.message);
+      }
 
       return res.status(200).json({
         success: true,

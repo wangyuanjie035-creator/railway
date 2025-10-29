@@ -50,6 +50,21 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Missing file ID' });
     }
 
+    // 如果是本地存储（内存Map），优先尝试直接返回
+    if (global.fileStorage && global.fileStorage.has(id)) {
+      try {
+        const record = global.fileStorage.get(id);
+        const base64 = record.fileData || '';
+        const buffer = Buffer.from(base64, 'base64');
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${record.fileName || 'download.bin'}"`);
+        res.setHeader('Content-Length', buffer.length);
+        return res.status(200).send(buffer);
+      } catch (e) {
+        console.error('从本地存储返回文件失败:', e);
+      }
+    }
+
     // 查询存储在 Metaobject 中的文件记录
     const query = `
       query($type: String!, $first: Int!) {
