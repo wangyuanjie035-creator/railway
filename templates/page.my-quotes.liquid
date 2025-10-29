@@ -749,62 +749,8 @@ async function loadOrderDetails() {
   console.log('草稿订单ID:', draftOrderId);
   
   try {
-    // 先检查所有草稿订单
-    console.log('检查所有草稿订单...');
-    const listResponse = await fetch(`${API_BASE}/get-draft-orders`);
-    const listData = await listResponse.json();
-    console.log('草稿订单列表:', listData);
-    
-    if (listData.success && listData.draftOrders.length === 0) {
-      console.log('草稿订单列表为空，继续尝试直接查询...');
-      // 不要直接抛出错误，继续尝试直接查询
-    }
-    
-    // 查找匹配的订单
-    let foundOrder = null;
-    if (listData.success && listData.draftOrders.length > 0) {
-      console.log('搜索订单ID:', draftOrderId);
-      console.log('订单列表:', listData.draftOrders.map(o => ({ id: o.id, name: o.name })));
-      
-      foundOrder = listData.draftOrders.find(order => {
-        // 多种匹配方式
-        const matches = [
-          order.id === draftOrderId,
-          order.id === decodeURIComponent(draftOrderId),
-          order.name === draftOrderId,
-          order.name === decodeURIComponent(draftOrderId),
-          // 如果draftOrderId是数字ID，尝试匹配GID
-          order.id === `gid://shopify/DraftOrder/${draftOrderId}`,
-          order.id === `gid://shopify/DraftOrder/${decodeURIComponent(draftOrderId)}`,
-          // 提取GID中的数字部分进行匹配
-          order.id && order.id.includes(draftOrderId.replace(/\D/g, '')),
-          order.id && order.id.includes(decodeURIComponent(draftOrderId).replace(/\D/g, ''))
-        ];
-        
-        const isMatch = matches.some(match => match);
-        if (isMatch) {
-          console.log('✅ 找到匹配订单:', { 
-            searchId: draftOrderId, 
-            orderId: order.id, 
-            orderName: order.name 
-          });
-        }
-        return isMatch;
-      });
-      
-      if (foundOrder) {
-        console.log('在列表中找到订单:', foundOrder);
-        // 使用找到的订单数据
-        window.currentDraftOrder = foundOrder;
-        renderOrderDetails(foundOrder);
-        return;
-      } else {
-        console.log('❌ 在订单列表中未找到匹配的订单');
-      }
-    }
-    
-    // 如果列表中没有找到，尝试直接查询
-    console.log('尝试直接查询订单详情...');
+    // 直接查询当前草稿订单详情，避免额外列表请求导致的500
+    console.log('直接查询订单详情...');
     const response = await fetch(`${API_BASE}/get-draft-order-simple?id=${encodeURIComponent(draftOrderId)}`);
     
     if (!response.ok) {
