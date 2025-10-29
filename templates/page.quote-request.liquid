@@ -1619,14 +1619,19 @@
    * 显示成功消息
    */
   function showSuccess(result) {
+    // 成功后直接跳转到“我的询价”，带上草稿订单ID
+    if (result && result.draftOrderId) {
+      const url = `/pages/my-quotes?id=${encodeURIComponent(result.draftOrderId)}`;
+      window.location.href = url;
+      return;
+    }
+    // 兜底：没有返回ID时，仍显示提示
     const successMessage = document.getElementById('success-message');
     const successText = document.getElementById('success-text');
-    
     successText.innerHTML = `
-      询价单号: <strong>${result.quoteId}</strong><br>
-      ${result.message || '我们将尽快为您报价，请留意邮件通知。'}
+      询价单号: <strong>${result?.quoteId || '—'}</strong><br>
+      ${result?.message || '我们将尽快为您报价，请留意邮件通知。'}
     `;
-    
     successMessage.style.display = 'block';
   }
   
