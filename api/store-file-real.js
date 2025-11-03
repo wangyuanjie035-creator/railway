@@ -1,15 +1,15 @@
 const setCorsHeaders = require('./cors-config.js');
 
-// 尝试使用原生 FormData，如果不存在则使用 form-data 包
+// 优先使用 form-data 包，确保兼容性
 let FormDataClass;
 try {
-  // Node.js 18+ 有原生 FormData
-  FormDataClass = global.FormData || require('form-data');
-} catch (e) {
   FormDataClass = require('form-data');
+} catch (e) {
+  console.error('⚠️ 无法加载 form-data 包，尝试使用原生 FormData:', e);
+  FormDataClass = global.FormData;
 }
 
-console.log('🔧 使用的 FormData 类型:', FormDataClass.name || 'form-data package');
+console.log('🔧 使用的 FormData 类型:', FormDataClass.name || '未知');
 
 /**
  * ═══════════════════════════════════════════════════════════════
