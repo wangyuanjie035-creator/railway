@@ -1,5 +1,5 @@
-// 导出文件存储函数供其他API使用
-export async function storeFileData({ draftOrderId, fileData, fileName }) {
+// 文件存储函数 - 使用全局Map存储Base64文件
+async function storeFileData({ draftOrderId, fileData, fileName }) {
   try {
     // 使用全局变量存储文件数据
     if (!global.fileStorage) {
@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 使用导出的存储函数
+    // 调用存储函数
     const result = await storeFileData({ draftOrderId, fileData, fileName });
     
     if (result.success) {
@@ -80,3 +80,6 @@ module.exports = async function handler(req, res) {
     });
   }
 }
+
+// 导出存储函数供其他API使用
+module.exports.storeFileData = storeFileData;

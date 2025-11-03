@@ -290,7 +290,9 @@ module.exports = async function handler(req, res) {
           const baseUrlEnv = process.env.PUBLIC_BASE_URL || '';
           const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
           const baseUrl = (baseUrlEnv || requestHost).replace(/\/$/, '');
-          await fetch(`${baseUrl}/api/store-file-data`, {
+          
+          console.log('📦 将Base64文件存储到服务端...');
+          const storeResponse = await fetch(`${baseUrl}/api/store-file-data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -299,6 +301,14 @@ module.exports = async function handler(req, res) {
               fileName: fileName || 'model.stl'
             })
           });
+          
+          if (storeResponse.ok) {
+            const storeResult = await storeResponse.json();
+            if (storeResult.success && storeResult.fileId) {
+              fileId = storeResult.fileId; // 更新fileId为服务端生成的ID
+              console.log('✅ 文件已存储到服务端:', fileId);
+            }
+          }
         }
       } catch (persistErr) {
         console.warn('⚠️ 持久化Base64文件失败:', persistErr.message);

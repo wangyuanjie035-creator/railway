@@ -1305,7 +1305,7 @@ async function deleteOrder(orderId) {
   try {
     console.log('删除订单:', orderId);
     const response = await fetch(`${API_BASE}/delete-draft-order`, {
-      method: 'POST',
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json'
       },

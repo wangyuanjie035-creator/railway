@@ -6,7 +6,7 @@ const router = express.Router();
 
 // 安全导入 API 路由
 let downloadFile, submitQuoteReal, getDraftOrders, updateQuote, deleteDraftOrder;
-let sendInvoiceEmail, storeFileReal, completeDraftOrder, getDraftOrderSimple, corsConfig, diagnoseEnv;
+let sendInvoiceEmail, storeFileReal, storeFileData, completeDraftOrder, getDraftOrderSimple, corsConfig, diagnoseEnv;
 
 try {
   downloadFile = require('./download-file-express.js');
@@ -16,6 +16,7 @@ try {
   deleteDraftOrder = require('./delete-draft-order.js');
   sendInvoiceEmail = require('./send-invoice-email.js');
   storeFileReal = require('./store-file-real.js');
+  storeFileData = require('./store-file-data.js');
   completeDraftOrder = require('./complete-draft-order.js');
   getDraftOrderSimple = require('./get-draft-order-simple.js');
   corsConfig = require('./cors-config.js');
@@ -39,6 +40,7 @@ if (updateQuote) router.post('/update-quote', updateQuote);
 if (deleteDraftOrder) router.delete('/delete-draft-order', deleteDraftOrder);
 if (sendInvoiceEmail) router.post('/send-invoice-email', sendInvoiceEmail);
 if (storeFileReal) router.post('/store-file-real', storeFileReal);
+if (storeFileData) router.post('/store-file-data', storeFileData);
 if (completeDraftOrder) router.post('/complete-draft-order', completeDraftOrder);
 if (getDraftOrderSimple) router.get('/get-draft-order-simple', getDraftOrderSimple);
 if (diagnoseEnv) router.get('/diagnose-env', diagnoseEnv);
