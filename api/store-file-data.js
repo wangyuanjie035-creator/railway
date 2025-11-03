@@ -16,6 +16,7 @@ async function storeFileData({ draftOrderId, fileData, fileName }) {
     });
 
     console.log('✅ 文件数据存储成功:', { fileId, fileName, draftOrderId });
+    console.log('📊 当前存储数量:', global.fileStorage.size);
 
     return {
       success: true,
@@ -54,7 +55,10 @@ module.exports = async function handler(req, res) {
 
     const { draftOrderId, fileData, fileName } = req.body;
 
+    console.log('📥 store-file-data 收到请求:', { draftOrderId, fileName, fileDataLength: fileData?.length || 0 });
+
     if (!draftOrderId || !fileData || !fileName) {
+      console.error('❌ 缺少必要参数:', { draftOrderId: !!draftOrderId, fileData: !!fileData, fileName: !!fileName });
       return res.status(400).json({
         success: false,
         message: 'Missing required parameters: draftOrderId, fileData, fileName'
