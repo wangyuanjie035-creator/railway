@@ -1217,9 +1217,15 @@ async function loadAllOrders() {
 function renderOrdersList(orders) {
   console.log('渲染订单列表:', orders);
   
-  // 隐藏单个订单详情
+  // 隐藏单个订单详情和空状态
   document.getElementById('quote-detail').style.display = 'none';
   document.getElementById('loading-state').style.display = 'none';
+  
+  // 隐藏空状态
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) {
+    emptyState.style.display = 'none';
+  }
   
   // 显示订单列表容器
   let ordersListContainer = document.getElementById('orders-list-container');
@@ -1334,6 +1340,12 @@ function showEmptyState() {
   // 隐藏其他内容
   document.getElementById('quote-detail').style.display = 'none';
   document.getElementById('loading-state').style.display = 'none';
+  
+  // 隐藏订单列表容器
+  const ordersListContainer = document.getElementById('orders-list-container');
+  if (ordersListContainer) {
+    ordersListContainer.style.display = 'none';
+  }
   
   let emptyState = document.getElementById('empty-state');
   if (!emptyState) {

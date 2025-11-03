@@ -138,8 +138,8 @@ module.exports = async function handler(req, res) {
       let shopifyFileInfo = null;
       let fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // 单文件处理
-      if (req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
+      // 单文件处理 - 只有在未设置SKIP_SHOPIFY_FILES时才尝试上传到Shopify Files
+      if (req.body.fileUrl && req.body.fileUrl.startsWith('data:') && process.env.SKIP_SHOPIFY_FILES !== 'true') {
         console.log('📁 开始上传单个文件到Shopify Files...');
         try {
           // 优先使用环境变量指定的公开基础地址（如 Railway 域名），否则回退到当前请求的 Host
@@ -175,6 +175,8 @@ module.exports = async function handler(req, res) {
         } catch (uploadError) {
           console.warn('⚠️ 文件上传到Shopify Files异常:', uploadError.message);
         }
+      } else if (req.body.fileUrl && req.body.fileUrl.startsWith('data:') && process.env.SKIP_SHOPIFY_FILES === 'true') {
+        console.log('🔄 跳过Shopify Files上传，直接使用Base64存储');
       }
       
       console.log('✅ 生成文件ID:', fileId);
