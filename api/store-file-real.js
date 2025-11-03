@@ -58,6 +58,7 @@ module.exports = async function handler(req, res) {
       const fileSize = fileBuffer.length;
 
       console.log(`📁 开始上传文件: ${fileName}, 大小: ${fileSize} 字节`);
+      console.log(`🔧 SKIP_SHOPIFY_FILES 环境变量值: ${process.env.SKIP_SHOPIFY_FILES}`);
       
       // 临时跳过 Shopify Files，直接使用 Base64 存储（调试用）
       if (process.env.SKIP_SHOPIFY_FILES === 'true') {
@@ -73,6 +74,8 @@ module.exports = async function handler(req, res) {
           timestamp: new Date().toISOString()
         });
       }
+      
+      console.log('⚠️ SKIP_SHOPIFY_FILES 未设置，将尝试上传到 Shopify Files');
 
       // 获取环境变量
       const storeDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOP;
