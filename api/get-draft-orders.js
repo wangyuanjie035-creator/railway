@@ -106,7 +106,7 @@ module.exports = async function handler(req, res) {
     // 获取查询参数
     const { status, limit = 50 } = req.query;
 
-    // GraphQL查询
+    // GraphQL查询（注意：Shopify API不支持note字段）
     const query = `
       query getDraftOrders($first: Int!) {
         draftOrders(first: $first) {
@@ -120,7 +120,6 @@ module.exports = async function handler(req, res) {
               updatedAt
               status
               invoiceUrl
-              note
               lineItems(first: 10) {
                 edges {
                   node {
@@ -211,9 +210,8 @@ module.exports = async function handler(req, res) {
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         invoiceUrl: order.invoiceUrl || 'data:stored',
-        fileId: fileId, // 添加文件ID
-        fileData: fileData, // 添加文件数据
-        note: order.note, // 添加note字段
+        fileId: fileId, // 添加文件ID（用于从服务端获取文件）
+        fileData: fileData, // 添加文件数据（如果存在，向后兼容）
         lineItems: order.lineItems.edges.map(itemEdge => ({
           id: itemEdge.node.id,
           title: itemEdge.node.title,
