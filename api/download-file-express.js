@@ -124,6 +124,26 @@ async function downloadFileHandler(req, res) {
       return res.status(400).json({ error: 'Missing file ID' });
     }
 
+    // 如果是本地存储（内存Map），优先尝试直接返回
+    console.log('🔍 检查本地存储:', { id, hasStorage: !!global.fileStorage, storageSize: global.fileStorage?.size || 0 });
+    if (global.fileStorage && global.fileStorage.has(id)) {
+      console.log('✅ 找到本地存储文件:', id);
+      try {
+        const record = global.fileStorage.get(id);
+        const base64 = record.fileData || '';
+        const buffer = Buffer.from(base64, 'base64');
+        console.log('📦 准备返回文件:', { fileName: record.fileName, bufferSize: buffer.length });
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${record.fileName || 'download.bin'}"`);
+        res.setHeader('Content-Length', buffer.length);
+        return res.status(200).send(buffer);
+      } catch (e) {
+        console.error('从本地存储返回文件失败:', e);
+      }
+    } else {
+      console.log('❌ 本地存储中未找到文件:', id);
+    }
+
     console.log('查询Metaobject文件:', id);
 
     // 查询存储在 Metaobject 中的文件记录
