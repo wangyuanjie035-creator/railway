@@ -155,47 +155,86 @@ module.exports = async function handler(req, res) {
       console.log('🔍 stagedTarget.url:', stagedTarget.url);
       console.log('🔍 stagedTarget.resourceUrl:', stagedTarget.resourceUrl);
       
-      // 添加参数
-      stagedTarget.parameters.forEach(param => {
+      // 添加参数（严格按照 Shopify 返回的顺序，文件必须是最后一个）
+      // 重要：参数顺序和文件位置对签名验证至关重要
+      stagedTarget.parameters.forEach((param, index) => {
         formData.append(param.name, param.value);
-        console.log(`✅ 添加参数: ${param.name} = ${param.value}`);
+        console.log(`✅ [${index + 1}] 添加参数: ${param.name} = ${param.value.substring(0, 50)}${param.value.length > 50 ? '...' : ''}`);
       });
       
-      // 添加文件（根据 FormData 类型使用不同方法）
+      // 添加文件（必须是最后一个字段，否则签名验证会失败）
       if (FormDataClass.name === 'FormData') {
         // 原生 FormData (Node.js 18+)
         const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
         formData.append('file', blob, fileName);
-        console.log(`📎 添加文件 (原生): ${fileName}, 大小: ${fileSize} 字节`);
+        console.log(`📎 [最后] 添加文件 (原生): ${fileName}, 大小: ${fileSize} 字节`);
       } else {
         // form-data 包
         formData.append('file', fileBuffer, {
           filename: fileName,
           contentType: fileType || 'application/octet-stream'
         });
-        console.log(`📎 添加文件 (form-data): ${fileName}, 大小: ${fileSize} 字节`);
+        console.log(`📎 [最后] 添加文件 (form-data): ${fileName}, 大小: ${fileSize} 字节`);
       }
+      
+      // 验证：确保文件是最后一个字段
+      console.log(`📊 FormData 字段总数: ${stagedTarget.parameters.length + 1} (${stagedTarget.parameters.length} 个参数 + 1 个文件)`);
 
       console.log('📤 上传文件到:', stagedTarget.url);
       console.log('📊 FormData参数数量:', stagedTarget.parameters.length);
 
-      const uploadResponse = await fetch(stagedTarget.url, {
+      // 上传文件（关键：不要设置任何 headers，让 form-data 自动处理）
+      // 如果使用 form-data 包，需要获取 headers（但 fetch 会自动处理）
+      let uploadOptions = {
         method: 'POST',
-        body: formData,
-        // 不要设置任何额外 headers；签名依赖于字段，form-data 会自动设置边界
-      });
+        body: formData
+      };
+      
+      // 如果使用 form-data 包，可能需要设置 headers（但通常不需要）
+      if (formData.getHeaders && typeof formData.getHeaders === 'function') {
+        const headers = formData.getHeaders();
+        console.log('📋 FormData Headers:', Object.keys(headers));
+        // 注意：fetch API 会自动处理 multipart/form-data 的 headers
+        // 不要手动设置，否则可能导致签名验证失败
+      }
+      
+      const uploadResponse = await fetch(stagedTarget.url, uploadOptions);
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error('❌ 文件上传失败:', uploadResponse.status, uploadResponse.statusText);
         console.error('错误详情:', errorText);
         console.error('🔍 上传URL:', stagedTarget.url);
-        console.error('🔍 请求头:', Object.fromEntries(formData.getHeaders ? Object.entries(formData.getHeaders()) : []));
+        
+        // 检查是否是签名验证错误
+        if (uploadResponse.status === 403 || errorText.includes('SignatureDoesNotMatch') || errorText.includes('Signature')) {
+          console.error('⚠️ 签名验证失败！可能的原因:');
+          console.error('  1. 参数顺序不正确（必须按照 Shopify 返回的顺序）');
+          console.error('  2. 文件不是最后一个字段（文件必须是最后一个）');
+          console.error('  3. FormData 边界格式不正确');
+          console.error('  4. 参数值被修改或截断');
+          console.error('  5. 使用了错误的 FormData 实现');
+          
+          // 输出调试信息
+          console.error('🔍 调试信息:');
+          console.error('  - FormData 类型:', FormDataClass.name || '未知');
+          console.error('  - 参数数量:', stagedTarget.parameters.length);
+          console.error('  - 参数名称列表:', stagedTarget.parameters.map(p => p.name).join(', '));
+          console.error('  - 文件字段名: file');
+          console.error('  - 文件大小:', fileSize, '字节');
+          
+          if (formData.getHeaders && typeof formData.getHeaders === 'function') {
+            const headers = formData.getHeaders();
+            console.error('  - FormData Headers:', headers);
+          }
+        }
+        
         return res.status(500).json({
           success: false,
           message: '文件上传到临时地址失败',
           error: `${uploadResponse.status} - ${uploadResponse.statusText}`,
-          details: errorText
+          details: errorText,
+          isSignatureError: uploadResponse.status === 403 || errorText.includes('Signature')
         });
       }
 
