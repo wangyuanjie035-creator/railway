@@ -8,13 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装依赖
-# 如果 package-lock.json 存在，使用 npm ci（更快、更可靠）
-# 否则使用 npm install
-RUN if [ -f package-lock.json ]; then \
-      npm ci --only=production; \
-    else \
-      npm install --only=production; \
-    fi
+# 使用 npm install 而不是 npm ci，避免 package-lock.json 不同步的问题
+# Railway 构建时可能 package-lock.json 与 package.json 不完全同步
+RUN npm install --omit=dev --prefer-offline --no-audit
 
 # 复制所有文件到容器（排除 .dockerignore 中的文件）
 COPY . .
