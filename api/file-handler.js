@@ -165,18 +165,30 @@ async function uploadToShopifyFiles(req, res) {
       console.error('错误详情:', errorText);
       
       if (uploadResponse.status === 403 || errorText.includes('SignatureDoesNotMatch')) {
-        console.error('⚠️ [Shopify Files] 签名验证失败！可能的原因:');
-        console.error('  1. 参数顺序不正确');
-        console.error('  2. 文件不是最后一个字段');
+        console.error('⚠️ [Shopify Files] 签名验证失败（403 Forbidden: SignatureDoesNotMatch）！');
+        console.error('可能的原因:');
+        console.error('  1. FormData 参数顺序不正确（必须严格按照 Shopify 返回的顺序）');
+        console.error('  2. 文件不是最后一个字段（文件必须是最后一个）');
         console.error('  3. FormData 边界格式不正确');
+        console.error('  4. 参数值被修改或截断');
+        console.error('  5. Content-Type 头设置不正确');
+        
+        // 记录详细的诊断信息
+        console.error('📋 诊断信息:');
+        console.error('  - 参数数量:', stagedTarget.parameters.length);
+        console.error('  - 参数列表:', stagedTarget.parameters.map(p => p.name).join(', '));
+        console.error('  - FormData 类型:', FormDataClass.name);
+        console.error('  - 文件大小:', fileSize, '字节');
+        console.error('  - 文件名:', fileName);
       }
       
       return res.status(500).json({
         success: false,
-        message: '文件上传到临时地址失败',
+        message: '文件上传到 Shopify Files 失败',
         error: `${uploadResponse.status} - ${uploadResponse.statusText}`,
         details: errorText,
-        isSignatureError: uploadResponse.status === 403
+        isSignatureError: uploadResponse.status === 403,
+        suggestion: uploadResponse.status === 403 ? '签名验证失败，请检查 FormData 参数顺序和文件位置' : '请检查文件大小和格式'
       });
     }
 
@@ -509,22 +521,32 @@ async function uploadToShopifyFilesHandler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   
-  // 跳过 Shopify Files 检查
+  // 默认尝试上传到 Shopify Files
+  // 只有在明确设置了 SKIP_SHOPIFY_FILES=true 时才跳过（用于紧急回退）
   if (process.env.SKIP_SHOPIFY_FILES === 'true') {
-    console.log('🔄 [文件处理] 跳过 Shopify Files，直接返回 fileId');
+    console.log('⚠️ [文件处理] SKIP_SHOPIFY_FILES=true，跳过 Shopify Files，使用本地存储');
     const { fileName, fileData } = req.body;
     const fileSize = fileData ? (fileData.includes(',') ? Buffer.from(fileData.split(',')[1], 'base64').length : Buffer.from(fileData, 'base64').length) : 0;
     const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return res.status(200).json({
       success: true,
-      message: '文件上传成功（Base64存储）',
+      message: '文件上传成功（本地存储，因为 SKIP_SHOPIFY_FILES=true）',
       fileId: fileId,
       fileName: fileName,
       uploadedFileSize: fileSize,
+      storageType: 'local',
       timestamp: new Date().toISOString()
     });
   }
-  return await uploadToShopifyFiles(req, res);
+  
+  // 默认上传到 Shopify Files
+  try {
+    return await uploadToShopifyFiles(req, res);
+  } catch (error) {
+    console.error('❌ [文件处理] Shopify Files 上传异常:', error);
+    // 上传失败时不自动回退，让调用方处理
+    throw error;
+  }
 }
 
 async function storeToServerMemoryHandler(req, res) {

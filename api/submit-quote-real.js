@@ -138,45 +138,64 @@ module.exports = async function handler(req, res) {
       let shopifyFileInfo = null;
       let fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // 单文件处理 - 只有在未设置SKIP_SHOPIFY_FILES时才尝试上传到Shopify Files
-      if (req.body.fileUrl && req.body.fileUrl.startsWith('data:') && process.env.SKIP_SHOPIFY_FILES !== 'true') {
-        console.log('📁 开始上传单个文件到Shopify Files...');
-        try {
-          // 优先使用环境变量指定的公开基础地址（如 Railway 域名），否则回退到当前请求的 Host
-          const baseUrlEnv = process.env.PUBLIC_BASE_URL;
-          const requestOrigin = req.headers.origin;
-          const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
-          const baseUrl = (baseUrlEnv || requestOrigin || requestHost || '').replace(/\/$/, '');
+      // 单文件处理 - 默认上传到 Shopify Files，失败时回退到本地存储
+      if (req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
+        // 如果明确设置了 SKIP_SHOPIFY_FILES=true，直接使用本地存储
+        if (process.env.SKIP_SHOPIFY_FILES === 'true') {
+          console.log('⚠️ SKIP_SHOPIFY_FILES=true，跳过 Shopify Files，使用本地存储');
+        } else {
+          // 默认尝试上传到 Shopify Files
+          console.log('📁 开始上传文件到 Shopify Files...');
+          try {
+            // 优先使用环境变量指定的公开基础地址（如 Railway 域名），否则回退到当前请求的 Host
+            const baseUrlEnv = process.env.PUBLIC_BASE_URL;
+            const requestOrigin = req.headers.origin;
+            const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
+            const baseUrl = (baseUrlEnv || requestOrigin || requestHost || '').replace(/\/$/, '');
 
-          const storeFileResponse = await fetch(`${baseUrl}/api/store-file-real`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              fileData: req.body.fileUrl,
-              fileName: fileName || 'model.stl',
-              fileType: 'application/octet-stream'
-            })
-          });
+            const storeFileResponse = await fetch(`${baseUrl}/api/store-file-real`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                fileData: req.body.fileUrl,
+                fileName: fileName || 'model.stl',
+                fileType: 'application/octet-stream'
+              })
+            });
 
-          if (storeFileResponse.ok) {
-            const contentType = storeFileResponse.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              shopifyFileInfo = await storeFileResponse.json();
-              fileId = shopifyFileInfo.fileId;
-              console.log('✅ 文件上传到Shopify Files成功:', shopifyFileInfo);
+            if (storeFileResponse.ok) {
+              const contentType = storeFileResponse.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const result = await storeFileResponse.json();
+                if (result.success) {
+                  shopifyFileInfo = result;
+                  fileId = shopifyFileInfo.fileId;
+                  console.log('✅ 文件上传到 Shopify Files 成功:', {
+                    fileId: shopifyFileInfo.fileId,
+                    shopifyFileId: shopifyFileInfo.shopifyFileId,
+                    fileUrl: shopifyFileInfo.fileUrl,
+                    originalFileSize: shopifyFileInfo.originalFileSize
+                  });
+                } else {
+                  console.warn('⚠️ 文件上传到 Shopify Files 失败（API返回success=false），回退到本地存储');
+                }
+              } else {
+                console.warn('⚠️ 文件上传API返回非JSON响应，回退到本地存储');
+              }
             } else {
-              console.warn('⚠️ 文件上传API返回非JSON响应，使用Base64存储');
+              const errorText = await storeFileResponse.text().catch(() => '');
+              console.warn('⚠️ 文件上传到 Shopify Files 失败，状态码:', storeFileResponse.status, '回退到本地存储');
+              if (errorText) {
+                console.warn('错误详情:', errorText.substring(0, 200));
+              }
             }
-          } else {
-            console.warn('⚠️ 文件上传到Shopify Files失败，状态码:', storeFileResponse.status, '使用Base64存储');
+          } catch (uploadError) {
+            console.error('❌ 文件上传到 Shopify Files 异常:', uploadError.message);
+            console.warn('⚠️ 回退到本地存储');
           }
-        } catch (uploadError) {
-          console.warn('⚠️ 文件上传到Shopify Files异常:', uploadError.message);
         }
-      } else if (req.body.fileUrl && req.body.fileUrl.startsWith('data:') && process.env.SKIP_SHOPIFY_FILES === 'true') {
-        console.log('🔄 跳过Shopify Files上传，直接使用Base64存储');
       }
       
       console.log('✅ 生成文件ID:', fileId);
@@ -286,9 +305,9 @@ module.exports = async function handler(req, res) {
 
       const draftOrder = data.data.draftOrderCreate.draftOrder;
 
-      // 如果没有上传到 Shopify Files，则将 Base64 数据存到服务端本地存储，与 fileId 关联
+      // 如果没有成功上传到 Shopify Files，则将 Base64 数据存到服务端本地存储作为回退方案
       try {
-        if ((!shopifyFileInfo || process.env.SKIP_SHOPIFY_FILES === 'true') && req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
+        if (!shopifyFileInfo && req.body.fileUrl && req.body.fileUrl.startsWith('data:')) {
           const baseUrlEnv = process.env.PUBLIC_BASE_URL || '';
           const requestHost = req.headers.host ? `https://${req.headers.host}` : '';
           const baseUrl = (baseUrlEnv || requestHost).replace(/\/$/, '');
