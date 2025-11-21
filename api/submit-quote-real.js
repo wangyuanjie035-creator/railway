@@ -309,6 +309,107 @@ module.exports = async function handler(req, res) {
             if (storeResult.success && storeResult.fileId) {
               fileId = storeResult.fileId; // 更新fileId为服务端生成的ID
               console.log('✅ 文件已存储到服务端:', fileId);
+              
+              // 更新 Draft Order 的 customAttributes，保存新的 fileId
+              try {
+                const updateMutation = `
+                  mutation($id: ID!, $input: DraftOrderInput!) {
+                    draftOrderUpdate(id: $id, input: $input) {
+                      draftOrder {
+                        id
+                        name
+                      }
+                      userErrors {
+                        field
+                        message
+                      }
+                    }
+                  }
+                `;
+                
+                // 查询当前 Draft Order 的 line items 和 customAttributes
+                const getCurrentQuery = `
+                  query($id: ID!) {
+                    draftOrder(id: $id) {
+                      lineItems(first: 10) {
+                        edges {
+                          node {
+                            id
+                            title
+                            quantity
+                            originalUnitPrice
+                            customAttributes {
+                              key
+                              value
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+                
+                const currentResponse = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Shopify-Access-Token': accessToken
+                  },
+                  body: JSON.stringify({
+                    query: getCurrentQuery,
+                    variables: { id: draftOrder.id }
+                  })
+                });
+                
+                const currentData = await currentResponse.json();
+                if (currentData.data && currentData.data.draftOrder) {
+                  const currentLineItem = currentData.data.draftOrder.lineItems.edges[0].node;
+                  
+                  // 更新 customAttributes，替换 fileId
+                  const updatedAttributes = currentLineItem.customAttributes.map(attr => 
+                    attr.key === '文件ID' ? { key: '文件ID', value: fileId } : attr
+                  );
+                  
+                  // 确保 fileId 存在
+                  if (!updatedAttributes.find(attr => attr.key === '文件ID')) {
+                    updatedAttributes.push({ key: '文件ID', value: fileId });
+                  }
+                  
+                  const updateInput = {
+                    taxExempt: true,
+                    lineItems: [{
+                      title: currentLineItem.title,
+                      quantity: currentLineItem.quantity,
+                      originalUnitPrice: currentLineItem.originalUnitPrice,
+                      customAttributes: updatedAttributes
+                    }]
+                  };
+                  
+                  const updateResponse = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-Shopify-Access-Token': accessToken
+                    },
+                    body: JSON.stringify({
+                      query: updateMutation,
+                      variables: {
+                        id: draftOrder.id,
+                        input: updateInput
+                      }
+                    })
+                  });
+                  
+                  const updateData = await updateResponse.json();
+                  if (updateData.errors || (updateData.data && updateData.data.draftOrderUpdate.userErrors.length > 0)) {
+                    console.error('⚠️ 更新 Draft Order fileId 失败:', updateData.errors || updateData.data.draftOrderUpdate.userErrors);
+                  } else {
+                    console.log('✅ Draft Order fileId 已更新:', fileId);
+                  }
+                }
+              } catch (updateErr) {
+                console.warn('⚠️ 更新 Draft Order fileId 时出错:', updateErr.message);
+              }
             }
           }
         }
