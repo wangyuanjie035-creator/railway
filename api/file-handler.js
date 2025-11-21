@@ -504,10 +504,8 @@ async function downloadFile(req, res) {
 }
 
 // ========== 统一入口 ==========
-// 注意：每个路由会单独注册，这里提供独立函数供路由使用
-
 // 导出独立函数供路由注册使用
-module.exports.uploadToShopifyFiles = async function(req, res) {
+async function uploadToShopifyFilesHandler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   
@@ -527,19 +525,19 @@ module.exports.uploadToShopifyFiles = async function(req, res) {
     });
   }
   return await uploadToShopifyFiles(req, res);
-};
+}
 
-module.exports.storeToServerMemory = async function(req, res) {
+async function storeToServerMemoryHandler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   return await storeToServerMemory(req, res);
-};
+}
 
-module.exports.downloadFile = async function(req, res) {
+async function downloadFileHandler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   return await downloadFile(req, res);
-};
+}
 
 // 默认导出（向后兼容）
 module.exports = async function handler(req, res) {
@@ -553,19 +551,25 @@ module.exports = async function handler(req, res) {
   const url = req.url || req.path || req.originalUrl || '';
   
   if (url.includes('/store-file-real') && req.method === 'POST') {
-    return await module.exports.uploadToShopifyFiles(req, res);
+    return await uploadToShopifyFilesHandler(req, res);
   }
   
   if (url.includes('/store-file-data') && req.method === 'POST') {
-    return await module.exports.storeToServerMemory(req, res);
+    return await storeToServerMemoryHandler(req, res);
   }
   
   if (url.includes('/download-file') && req.method === 'GET') {
-    return await module.exports.downloadFile(req, res);
+    return await downloadFileHandler(req, res);
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
 };
+
+// 导出独立函数供路由注册使用
+module.exports.uploadToShopifyFiles = uploadToShopifyFilesHandler;
+module.exports.storeToServerMemory = storeToServerMemoryHandler;
+module.exports.downloadFile = downloadFileHandler;
+module.exports.storeFileData = storeFileDataFunction;
 
 // 导出存储函数供其他API使用
 module.exports.storeFileData = storeFileDataFunction;

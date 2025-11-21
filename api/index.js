@@ -50,20 +50,22 @@ if (corsConfig) {
 // 注册所有路由（优先使用整合后的处理器，向后兼容旧文件）
 // 文件操作（整合后）
 if (fileHandler) {
-  // 使用独立函数注册路由
+  // 使用独立函数注册路由（如果存在）
   if (fileHandler.uploadToShopifyFiles) {
     router.post('/store-file-real', fileHandler.uploadToShopifyFiles);
+  } else {
+    router.post('/store-file-real', fileHandler);
   }
+  
   if (fileHandler.storeToServerMemory) {
     router.post('/store-file-data', fileHandler.storeToServerMemory);
+  } else {
+    router.post('/store-file-data', fileHandler);
   }
+  
   if (fileHandler.downloadFile) {
     router.get('/download-file', fileHandler.downloadFile);
-  }
-  // 兼容默认导出
-  if (!fileHandler.uploadToShopifyFiles) {
-    router.post('/store-file-real', fileHandler);
-    router.post('/store-file-data', fileHandler);
+  } else {
     router.get('/download-file', fileHandler);
   }
 }
