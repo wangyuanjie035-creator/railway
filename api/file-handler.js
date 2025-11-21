@@ -563,10 +563,13 @@ async function uploadToShopifyFilesHandler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   
-  // 默认尝试上传到 Shopify Files
+  // 检查环境变量（用于诊断）
+  console.log('🔧 [文件处理] SKIP_SHOPIFY_FILES 环境变量值:', process.env.SKIP_SHOPIFY_FILES);
+  
   // 只有在明确设置了 SKIP_SHOPIFY_FILES=true 时才跳过（用于紧急回退）
   if (process.env.SKIP_SHOPIFY_FILES === 'true') {
     console.log('⚠️ [文件处理] SKIP_SHOPIFY_FILES=true，跳过 Shopify Files，使用本地存储');
+    console.log('💡 [文件处理] 提示：要使用 Shopify Files，请在 Railway 环境变量中删除 SKIP_SHOPIFY_FILES 或设置为 false');
     const { fileName, fileData } = req.body;
     const fileSize = fileData ? (fileData.includes(',') ? Buffer.from(fileData.split(',')[1], 'base64').length : Buffer.from(fileData, 'base64').length) : 0;
     const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -577,11 +580,13 @@ async function uploadToShopifyFilesHandler(req, res) {
       fileName: fileName,
       uploadedFileSize: fileSize,
       storageType: 'local',
+      skipReason: 'SKIP_SHOPIFY_FILES=true',
       timestamp: new Date().toISOString()
     });
   }
   
   // 默认上传到 Shopify Files
+  console.log('📁 [文件处理] 开始上传到 Shopify Files...');
   try {
     return await uploadToShopifyFiles(req, res);
   } catch (error) {
