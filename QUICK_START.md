@@ -2,19 +2,19 @@
 
 ## 📝 5 分钟快速部署
 
-### 步骤 1: 部署到 Vercel (2 分钟)
+### 步骤 1: 部署到 Railway (2 分钟)
 
 ```bash
 # 1. 提交新文件到 Git
-git add api/submit-quote.js api/update-quote.js api/get-draft-order.js
-git commit -m "feat: 添加 Draft Order 报价 API"
-git push
+git add .
+git commit -m "feat: 部署到 Railway"
+git push origin main
 
-# 2. Vercel 自动部署（等待 1-2 分钟）
-# 访问 https://vercel.com/dashboard 查看部署状态
+# 2. Railway 自动部署（等待 2-3 分钟）
+# 访问 https://railway.app/dashboard 查看部署状态
 ```
 
-✅ **完成后**: 获取你的 Vercel 域名（如 `https://shopify-13s4.vercel.app`）
+✅ **完成后**: 获取你的 Railway 域名（如 `https://your-app.railway.app`）
 
 ---
 
@@ -32,6 +32,19 @@ git push
 ```bash
 shopify theme push --path templates/page.quote-request.liquid
 shopify theme push --path templates/page.my-quotes.liquid
+```
+
+---
+
+### 步骤 2: 配置环境变量 (1 分钟)
+
+在 Railway 项目设置中配置以下环境变量：
+
+```env
+SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+SHOPIFY_ACCESS_TOKEN=your_admin_token
+PUBLIC_BASE_URL=https://your-app.railway.app
+SKIP_SHOPIFY_FILES=true  # 可选：如果设为 true，文件存储在服务器内存中
 ```
 
 ---
