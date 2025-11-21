@@ -196,8 +196,26 @@ async function uploadToShopifyFiles(req, res) {
       try {
         headers = formData.getHeaders();
         console.log(`📋 [Shopify Files] 使用 form-data 包的 headers:`, Object.keys(headers).join(', '));
-        console.log(`📋 [Shopify Files] Content-Type:`, headers['content-type']?.substring(0, 50) || '未设置');
-        
+        console.log(`📋 [Shopify Files] Content-Type:`, headers['content-type']?.substring(0, 80) || '未设置');
+
+        // Shopify / Google Cloud 对 Content-Length 很敏感，最好手动指定
+        if (typeof formData.getLength === 'function') {
+          try {
+            const contentLength = await new Promise((resolve, reject) => {
+              formData.getLength((err, length) => {
+                if (err) return reject(err);
+                resolve(length);
+              });
+            });
+            if (typeof contentLength === 'number' && contentLength >= 0) {
+              headers['content-length'] = contentLength;
+              console.log(`📏 [Shopify Files] Content-Length: ${contentLength}`);
+            }
+          } catch (lengthErr) {
+            console.warn('⚠️ [Shopify Files] 计算 Content-Length 失败:', lengthErr.message);
+          }
+        }
+
         // 使用 node-fetch（与 form-data 包兼容）
         console.log(`📤 [Shopify Files] 使用 node-fetch 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
         uploadResponse = await nodeFetch(stagedTarget.url, {
