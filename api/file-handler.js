@@ -141,6 +141,50 @@ async function uploadToShopifyFiles(req, res) {
 
     const stagedTarget = stagedUploadData.data.stagedUploadsCreate.stagedTargets[0];
     console.log('✅ [Shopify Files] Staged Upload创建成功');
+    
+    // 详细记录返回的参数（用于诊断）
+    console.log('🔍 [Shopify Files] Staged Upload 完整响应:');
+    console.log('  - URL:', stagedTarget.url);
+    console.log('  - Resource URL:', stagedTarget.resourceUrl);
+    console.log('  - 参数数量:', stagedTarget.parameters?.length || 0);
+    if (stagedTarget.parameters && stagedTarget.parameters.length > 0) {
+      console.log('  - 参数列表:');
+      stagedTarget.parameters.forEach((param, idx) => {
+        console.log(`    [${idx + 1}] ${param.name}: ${param.value.substring(0, 80)}${param.value.length > 80 ? '...' : ''}`);
+      });
+    } else {
+      console.error('  ⚠️ 警告：没有返回任何参数！这可能是 Shopify API 权限或配置问题。');
+    }
+    
+    // 检查参数是否足够（通常需要至少5个参数：key, policy, x-goog-credential, x-goog-date, x-goog-signature 等）
+    if (!stagedTarget.parameters || stagedTarget.parameters.length < 3) {
+      console.error('❌ [Shopify Files] 严重警告：返回的参数数量不足！');
+      console.error('  预期：至少3-5个参数（包括签名参数）');
+      console.error('  实际：', stagedTarget.parameters?.length || 0, '个参数');
+      console.error('  这可能是因为：');
+      console.error('    1. Shopify 应用权限不足（需要 write_files 权限）');
+      console.error('    2. Shopify API 版本不兼容');
+      console.error('    3. Shopify 商店计划限制（某些计划可能不支持 Staged Upload）');
+      console.error('  建议：检查 Shopify 应用的 API 权限配置');
+      
+      // 返回详细的错误信息
+      return res.status(500).json({
+        success: false,
+        message: 'Shopify Staged Upload 返回的参数不足',
+        error: 'Insufficient parameters returned from Shopify API',
+        details: {
+          expected: 'At least 3-5 parameters (including signature parameters)',
+          received: stagedTarget.parameters?.length || 0,
+          parameters: stagedTarget.parameters?.map(p => p.name) || [],
+          possibleReasons: [
+            'Shopify app permissions insufficient (need write_files scope)',
+            'Shopify API version incompatibility',
+            'Shopify store plan limitations'
+          ],
+          suggestion: 'Check Shopify app API scopes and permissions'
+        }
+      });
+    }
 
     // 步骤2: 上传文件到临时地址
     // 优先使用 form-data 包（确保兼容性），如果不存在则使用原生 FormData
