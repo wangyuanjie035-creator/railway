@@ -133,29 +133,47 @@ async function uploadToShopifyFiles(req, res) {
     console.log('✅ [Shopify Files] Staged Upload创建成功');
 
     // 步骤2: 上传文件到临时地址
+    // 优先使用 form-data 包（确保兼容性），如果不存在则使用原生 FormData
     const formData = new FormDataClass();
     
-    // 添加签名参数（严格按照 Shopify 返回的顺序）
+    // 添加签名参数（严格按照 Shopify 返回的顺序，不要修改）
+    console.log(`📋 [Shopify Files] 准备添加 ${stagedTarget.parameters.length} 个签名参数`);
     stagedTarget.parameters.forEach((param, index) => {
       formData.append(param.name, param.value);
-      console.log(`✅ [Shopify Files] [${index + 1}] 添加参数: ${param.name} = ${param.value.substring(0, 50)}${param.value.length > 50 ? '...' : ''}`);
+      console.log(`✅ [Shopify Files] [${index + 1}/${stagedTarget.parameters.length}] 添加参数: ${param.name} = ${param.value.substring(0, 50)}${param.value.length > 50 ? '...' : ''}`);
     });
     
-    // 添加文件（必须是最后一个字段）
-    if (FormDataClass.name === 'FormData') {
+    // 添加文件（必须是最后一个字段，这是 Google Cloud Storage 的要求）
+    // 使用 form-data 包的正确方式
+    if (FormDataClass.name === 'FormData' && typeof Blob !== 'undefined') {
+      // 原生 FormData (浏览器环境)
       const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
       formData.append('file', blob, fileName);
-      console.log(`📎 [Shopify Files] [最后] 添加文件 (原生): ${fileName}, 大小: ${fileSize} 字节`);
+      console.log(`📎 [Shopify Files] [最后] 添加文件 (原生FormData+Blob): ${fileName}, 大小: ${fileSize} 字节`);
     } else {
+      // form-data 包 (Node.js 环境)
+      // 注意：form-data 包的 append 方法第三个参数是选项对象
       formData.append('file', fileBuffer, {
         filename: fileName,
-        contentType: fileType || 'application/octet-stream'
+        contentType: fileType || 'application/octet-stream',
+        knownLength: fileSize // 指定文件大小，有助于计算正确的 Content-Length
       });
-      console.log(`📎 [Shopify Files] [最后] 添加文件 (form-data): ${fileName}, 大小: ${fileSize} 字节`);
+      console.log(`📎 [Shopify Files] [最后] 添加文件 (form-data包): ${fileName}, 大小: ${fileSize} 字节`);
     }
 
+    // 发送请求
+    // 注意：form-data 包会自动设置正确的 Content-Type 头（包括 boundary）
+    // 不要手动设置 Content-Type，让 form-data 包处理
+    const headers = FormDataClass.name === 'FormData' 
+      ? {} // 原生 FormData 会自动设置
+      : (formData.getHeaders ? formData.getHeaders() : {}); // form-data 包需要调用 getHeaders()
+    
+    console.log(`📤 [Shopify Files] 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
+    console.log(`📋 [Shopify Files] 请求头:`, Object.keys(headers).join(', ') || '自动设置');
+    
     const uploadResponse = await fetch(stagedTarget.url, {
       method: 'POST',
+      headers: headers,
       body: formData
     });
 
