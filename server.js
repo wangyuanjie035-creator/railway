@@ -50,7 +50,22 @@ app.get('/health', (req, res) => {
 });
 
 // API 路由
-app.use('/api', require('./api/index.js'));
+try {
+  console.log('📦 加载 API 路由...');
+  const apiRouter = require('./api/index.js');
+  app.use('/api', apiRouter);
+  console.log('✅ API 路由加载成功');
+} catch (error) {
+  console.error('❌ 加载 API 路由失败:', error.message);
+  console.error('❌ 错误堆栈:', error.stack);
+  // 提供基本的错误响应
+  app.use('/api', (req, res) => {
+    res.status(500).json({ 
+      error: 'API routes failed to load',
+      message: error.message 
+    });
+  });
+}
 
 // 主页路由
 app.get('/', (req, res) => {
@@ -104,21 +119,39 @@ app.use((req, res) => {
 });
 
 // 启动服务器
-app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, (err) => {
+  if (err) {
+    console.error('❌ 服务器启动失败:', err);
+    process.exit(1);
+  }
   console.log(`🚀 Server running on ${HOST}:${PORT}`);
   console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Access: http://${HOST}:${PORT}`);
   console.log(`🏥 Health check: http://${HOST}:${PORT}/health`);
   console.log(`🏥 API Health check: http://${HOST}:${PORT}/api/health`);
+  console.log(`✅ 服务器已成功启动，准备接收请求`);
 });
 
 // 处理服务器启动错误
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught Exception:', err);
-  process.exit(1);
+  console.error('💥 错误堆栈:', err.stack);
+  // 给 Railway 时间记录错误，然后退出
+  setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  if (reason instanceof Error) {
+    console.error('💥 错误堆栈:', reason.stack);
+  }
+  // 给 Railway 时间记录错误，然后退出
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// 处理 SIGTERM 信号（Railway 发送的停止信号）
+process.on('SIGTERM', () => {
+  console.log('⚠️ 收到 SIGTERM 信号，正在优雅关闭服务器...');
+  // 给 Railway 时间记录日志
+  setTimeout(() => process.exit(0), 1000);
 });

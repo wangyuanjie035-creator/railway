@@ -9,15 +9,33 @@ let fileHandler, draftOrderHandler, submitQuoteReal;
 let sendInvoiceEmail, getOrCreateProduct, corsConfig;
 
 try {
+  console.log('📦 开始加载 API 路由模块...');
+  
   // 整合后的处理器
+  console.log('📦 加载 file-handler.js...');
   fileHandler = require('./file-handler.js');
+  console.log('✅ file-handler.js 加载成功');
+  
+  console.log('📦 加载 draft-order-handler.js...');
   draftOrderHandler = require('./draft-order-handler.js');
+  console.log('✅ draft-order-handler.js 加载成功');
   
   // 核心功能（保持独立）
+  console.log('📦 加载 submit-quote-real.js...');
   submitQuoteReal = require('./submit-quote-real.js');
+  console.log('✅ submit-quote-real.js 加载成功');
+  
+  console.log('📦 加载 send-invoice-email.js...');
   sendInvoiceEmail = require('./send-invoice-email.js');
+  console.log('✅ send-invoice-email.js 加载成功');
+  
+  console.log('📦 加载 get-or-create-product.js...');
   getOrCreateProduct = require('./get-or-create-product.js');
+  console.log('✅ get-or-create-product.js 加载成功');
+  
+  console.log('📦 加载 cors-config.js...');
   corsConfig = require('./cors-config.js');
+  console.log('✅ cors-config.js 加载成功');
   
   // 兼容性：保留旧文件导入（如果存在）
   let downloadFile, getDraftOrders, updateQuote, deleteDraftOrder;
@@ -35,9 +53,14 @@ try {
     console.log('⚠️ 检测到旧文件，建议迁移到整合后的处理器');
   } catch (e) {
     // 旧文件不存在，使用整合后的处理器
+    console.log('ℹ️ 旧文件不存在，使用整合后的处理器');
   }
+  
+  console.log('✅ 所有 API 路由模块加载完成');
 } catch (error) {
-  console.error('Error importing API routes:', error.message);
+  console.error('❌ Error importing API routes:', error.message);
+  console.error('❌ 错误堆栈:', error.stack);
+  // 不抛出错误，让服务器继续启动（部分功能可能不可用）
 }
 
 // 应用 CORS 配置
