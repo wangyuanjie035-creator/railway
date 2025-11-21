@@ -633,8 +633,6 @@ module.exports = async function handler(req, res) {
 module.exports.uploadToShopifyFiles = uploadToShopifyFilesHandler;
 module.exports.storeToServerMemory = storeToServerMemoryHandler;
 module.exports.downloadFile = downloadFileHandler;
-module.exports.storeFileData = storeFileDataFunction;
-
 // 导出存储函数供其他API使用
 module.exports.storeFileData = storeFileDataFunction;
 
