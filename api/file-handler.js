@@ -27,6 +27,16 @@ try {
 }
 console.log('🔧 使用的 FormData 类型:', FormDataClass.name || '未知');
 
+// 导入 node-fetch（与 form-data 包兼容更好）
+let nodeFetch;
+try {
+  nodeFetch = require('node-fetch');
+  console.log('✅ 使用 node-fetch 进行文件上传（与 form-data 兼容）');
+} catch (e) {
+  console.warn('⚠️ 无法加载 node-fetch，使用原生 fetch:', e);
+  nodeFetch = fetch; // 回退到原生 fetch
+}
+
 // ========== 辅助函数：Shopify GraphQL API ==========
 async function shopGql(query, variables) {
   const storeDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOP;
@@ -176,30 +186,38 @@ async function uploadToShopifyFiles(req, res) {
     }
 
     // 发送请求
-    // form-data 包需要手动设置 headers（包括 boundary）
-    // 原生 FormData 会自动设置，不需要手动设置
+    // form-data 包与 node-fetch 兼容性更好
+    // 原生 fetch API 无法正确处理 form-data 包（会导致 "Invalid multipart request with 0 mime parts"）
     let headers = {};
+    let uploadResponse;
+    
     if (isFormDataPackage) {
-      // form-data 包需要调用 getHeaders() 获取正确的 Content-Type（包括 boundary）
+      // form-data 包需要手动设置 headers（包括 boundary）
       try {
         headers = formData.getHeaders();
         console.log(`📋 [Shopify Files] 使用 form-data 包的 headers:`, Object.keys(headers).join(', '));
+        console.log(`📋 [Shopify Files] Content-Type:`, headers['content-type']?.substring(0, 50) || '未设置');
+        
+        // 使用 node-fetch（与 form-data 包兼容）
+        console.log(`📤 [Shopify Files] 使用 node-fetch 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
+        uploadResponse = await nodeFetch(stagedTarget.url, {
+          method: 'POST',
+          headers: headers,
+          body: formData
+        });
       } catch (e) {
-        console.warn('⚠️ 无法获取 form-data headers:', e);
-        // 如果获取失败，不设置 headers，让 fetch 自动处理
+        console.error('❌ 无法发送上传请求:', e);
+        throw e;
       }
     } else {
-      // 原生 FormData 会自动设置 Content-Type，不需要手动设置
+      // 原生 FormData 会自动设置 Content-Type
       console.log(`📋 [Shopify Files] 使用原生 FormData，自动设置 headers`);
+      console.log(`📤 [Shopify Files] 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
+      uploadResponse = await nodeFetch(stagedTarget.url, {
+        method: 'POST',
+        body: formData
+      });
     }
-    
-    console.log(`📤 [Shopify Files] 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
-    
-    const uploadResponse = await fetch(stagedTarget.url, {
-      method: 'POST',
-      headers: headers,
-      body: formData
-    });
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
