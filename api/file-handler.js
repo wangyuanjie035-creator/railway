@@ -144,13 +144,10 @@ async function uploadToShopifyFiles(req, res) {
     });
     
     // 添加文件（必须是最后一个字段，这是 Google Cloud Storage 的要求）
-    // 使用 form-data 包的正确方式
-    if (FormDataClass.name === 'FormData' && typeof Blob !== 'undefined') {
-      // 原生 FormData (浏览器环境)
-      const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
-      formData.append('file', blob, fileName);
-      console.log(`📎 [Shopify Files] [最后] 添加文件 (原生FormData+Blob): ${fileName}, 大小: ${fileSize} 字节`);
-    } else {
+    // 检测是否为 form-data 包（通过检查是否有 getHeaders 方法）
+    const isFormDataPackage = typeof formData.getHeaders === 'function';
+    
+    if (isFormDataPackage) {
       // form-data 包 (Node.js 环境)
       // 注意：form-data 包的 append 方法第三个参数是选项对象
       formData.append('file', fileBuffer, {
@@ -159,17 +156,44 @@ async function uploadToShopifyFiles(req, res) {
         knownLength: fileSize // 指定文件大小，有助于计算正确的 Content-Length
       });
       console.log(`📎 [Shopify Files] [最后] 添加文件 (form-data包): ${fileName}, 大小: ${fileSize} 字节`);
+    } else {
+      // 原生 FormData (浏览器环境，Node.js 18+ 可能也支持)
+      try {
+        // 在 Node.js 中，尝试使用 Blob（如果可用）
+        if (typeof Blob !== 'undefined') {
+          const blob = new Blob([fileBuffer], { type: fileType || 'application/octet-stream' });
+          formData.append('file', blob, fileName);
+          console.log(`📎 [Shopify Files] [最后] 添加文件 (原生FormData+Blob): ${fileName}, 大小: ${fileSize} 字节`);
+        } else {
+          // 如果没有 Blob，直接使用 Buffer（Node.js 原生 FormData 可能支持）
+          formData.append('file', fileBuffer, fileName);
+          console.log(`📎 [Shopify Files] [最后] 添加文件 (原生FormData+Buffer): ${fileName}, 大小: ${fileSize} 字节`);
+        }
+      } catch (e) {
+        console.error('❌ 无法添加文件到 FormData:', e);
+        throw new Error(`无法添加文件到 FormData: ${e.message}`);
+      }
     }
 
     // 发送请求
-    // 注意：form-data 包会自动设置正确的 Content-Type 头（包括 boundary）
-    // 不要手动设置 Content-Type，让 form-data 包处理
-    const headers = FormDataClass.name === 'FormData' 
-      ? {} // 原生 FormData 会自动设置
-      : (formData.getHeaders ? formData.getHeaders() : {}); // form-data 包需要调用 getHeaders()
+    // form-data 包需要手动设置 headers（包括 boundary）
+    // 原生 FormData 会自动设置，不需要手动设置
+    let headers = {};
+    if (isFormDataPackage) {
+      // form-data 包需要调用 getHeaders() 获取正确的 Content-Type（包括 boundary）
+      try {
+        headers = formData.getHeaders();
+        console.log(`📋 [Shopify Files] 使用 form-data 包的 headers:`, Object.keys(headers).join(', '));
+      } catch (e) {
+        console.warn('⚠️ 无法获取 form-data headers:', e);
+        // 如果获取失败，不设置 headers，让 fetch 自动处理
+      }
+    } else {
+      // 原生 FormData 会自动设置 Content-Type，不需要手动设置
+      console.log(`📋 [Shopify Files] 使用原生 FormData，自动设置 headers`);
+    }
     
     console.log(`📤 [Shopify Files] 发送上传请求到: ${stagedTarget.url.substring(0, 100)}...`);
-    console.log(`📋 [Shopify Files] 请求头:`, Object.keys(headers).join(', ') || '自动设置');
     
     const uploadResponse = await fetch(stagedTarget.url, {
       method: 'POST',
