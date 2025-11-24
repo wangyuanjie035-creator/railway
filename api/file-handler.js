@@ -110,7 +110,11 @@ async function uploadToShopifyFiles(req, res) {
       }
     `;
 
-    const stagedUploadResponse = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+    // 尝试使用最新 API 版本（如果 2024-01 有问题，可以尝试 2024-10）
+    const apiVersion = process.env.SHOPIFY_API_VERSION || '2024-01';
+    console.log(`🔧 [Shopify Files] 使用 API 版本: ${apiVersion}`);
+    
+    const stagedUploadResponse = await fetch(`https://${storeDomain}/admin/api/${apiVersion}/graphql.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
